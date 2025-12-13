@@ -1,0 +1,112 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  engineType = "client"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  role          String    @default("STUDENT") // STUDENT or ADMIN
+  accounts      Account[]
+  sessions      Session[]
+  
+  enrollment    Enrollment?
+  votes         Vote[]
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?
+  access_token       String?
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Milestone {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  labelPattern String  // e.g. "#M1"
+  order       Int
+  points      Int      @default(1)
+  
+  activities  Activity[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Enrollment {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  repoUrl          String?
+  isVotingCandidate Boolean  @default(false)
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activities  Activity[]
+  votes       Vote[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Activity {
+  id             String    @id @default(cuid())
+  enrollmentId   String
+  milestoneId    String
+  commitHash     String?
+  commitMessage  String?
+  timestamp      DateTime  @default(now())
+  
+  enrollment     Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  milestone      Milestone  @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+
+  @@unique([enrollmentId, milestoneId]) // A student can complete a milestone only once
+}
+
+model RepoConfig {
+  id          String   @id @default(cuid())
+  key         String   @unique // "VOTING_OPEN", "VOTING_REVEALED"
+  value       String   // "true"/"false"
+}
+
+model Vote {
+  id          String   @id @default(cuid())
+  voterId     String   @unique // One vote per user
+  candidateId String   // The enrollmentId they are voting for
+  
+  voter       User     @relation(fields: [voterId], references: [id], onDelete: Cascade)
+  candidate   Enrollment @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+}

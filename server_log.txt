@@ -1,0 +1,56 @@
+
+> vc_hackathon_hub@0.1.0 dev
+> next dev 
+
+ ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of c:\Users\alvarez\Documents\code\package-lock.json as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * c:\Users\alvarez\Documents\code\vc_hackathon_hub\package-lock.json
+
+   ▲ Next.js 16.0.10 (Turbopack)
+   - Local:         http://localhost:3000
+   - Network:       http://172.28.96.1:3000
+   - Environments: .env
+
+ ✓ Starting...
+ ✓ Ready in 1042ms
+c:\Users\alvarez\Documents\code\vc_hackathon_hub\node_modules\@prisma\client\runtime\client.js: Invalid source map. Only conformant source maps can be used to find the original code. Cause: Error: sourceMapURL could not be parsed
+c:\Users\alvarez\Documents\code\vc_hackathon_hub\.next\dev\server\chunks\[root-of-the-server]__0dd9e1a0._.js: Invalid source map. Only conformant source maps can be used to find the original code. Cause: Error: sourceMapURL could not be parsed
+c:\Users\alvarez\Documents\code\vc_hackathon_hub\.next\dev\server\chunks\[turbopack]_runtime.js: Invalid source map. Only conformant source maps can be used to find the original code. Cause: Error: sourceMapURL could not be parsed
+c:\Users\alvarez\Documents\code\vc_hackathon_hub\.next\dev\server\chunks\c5804_next_a792a27e._.js: Invalid source map. Only conformant source maps can be used to find the original code. Cause: Error: sourceMapURL could not be parsed
+c:\Users\alvarez\Documents\code\vc_hackathon_hub\node_modules\next\dist\server\require-hook.js: Invalid source map. Only conformant source maps can be used to find the original code. Cause: Error: sourceMapURL could not be parsed
+c:\Users\alvarez\Documents\code\vc_hackathon_hub\node_modules\next\dist\server\require.js: Invalid source map. Only conformant source maps can be used to find the original code. Cause: Error: sourceMapURL could not be parsed
+c:\Users\alvarez\Documents\code\vc_hackathon_hub\node_modules\next\dist\server\load-components.js: Invalid source map. Only conformant source maps can be used to find the original code. Cause: Error: sourceMapURL could not be parsed
+c:\Users\alvarez\Documents\code\vc_hackathon_hub\node_modules\next\dist\server\next-server.js: Invalid source map. Only conformant source maps can be used to find the original code. Cause: Error: sourceMapURL could not be parsed
+c:\Users\alvarez\Documents\code\vc_hackathon_hub\node_modules\next\dist\server\lib\trace\tracer.js: Invalid source map. Only conformant source maps can be used to find the original code. Cause: Error: sourceMapURL could not be parsed
+c:\Users\alvarez\Documents\code\vc_hackathon_hub\node_modules\next\dist\server\dev\next-dev-server.js: Invalid source map. Only conformant source maps can be used to find the original code. Cause: Error: sourceMapURL could not be parsed
+c:\Users\alvarez\Documents\code\vc_hackathon_hub\node_modules\next\dist\server\base-server.js: Invalid source map. Only conformant source maps can be used to find the original code. Cause: Error: sourceMapURL could not be parsed
+ ⨯ Error [PrismaClientConstructorValidationError]: Unknown property datasources provided to PrismaClient constructor.
+Read more at https://pris.ly/d/client-constructor
+    at prismaClientSingleton (c:\Users\alvarez\Documents\code\vc_hackathon_hub\.next\dev\server\chunks\[root-of-the-server]__0dd9e1a0._.js:54:12)
+    at module evaluation (c:\Users\alvarez\Documents\code\vc_hackathon_hub\.next\dev\server\chunks\[root-of-the-server]__0dd9e1a0._.js:63:42)
+    at instantiateModule (c:\Users\alvarez\Documents\code\vc_hackathon_hub\.next\dev\server\chunks\[turbopack]_runtime.js:715:9)
+    at getOrInstantiateModuleFromParent (c:\Users\alvarez\Documents\code\vc_hackathon_hub\.next\dev\server\chunks\[turbopack]_runtime.js:738:12)
+    at Context.esmImport [as i] (c:\Users\alvarez\Documents\code\vc_hackathon_hub\.next\dev\server\chunks\[turbopack]_runtime.js:228:20)
+    at module evaluation (c:\Users\alvarez\Documents\code\vc_hackathon_hub\.next\dev\server\chunks\[root-of-the-server]__0dd9e1a0._.js:76:168)
+    at instantiateModule (c:\Users\alvarez\Documents\code\vc_hackathon_hub\.next\dev\server\chunks\[turbopack]_runtime.js:715:9)
+    at getOrInstantiateModuleFromParent (c:\Users\alvarez\Documents\code\vc_hackathon_hub\.next\dev\server\chunks\[turbopack]_runtime.js:738:12)
+    at Context.esmImport [as i] (c:\Users\alvarez\Documents\code\vc_hackathon_hub\.next\dev\server\chunks\[turbopack]_runtime.js:228:20)
+    at module evaluation (c:\Users\alvarez\Documents\code\vc_hackathon_hub\.next\dev\server\chunks\[root-of-the-server]__0dd9e1a0._.js:175:166)
+    at instantiateModule (c:\Users\alvarez\Documents\code\vc_hackathon_hub\.next\dev\server\chunks\[turbopack]_runtime.js:715:9)
+    at getOrInstantiateModuleFromParent (c:\Users\alvarez\Documents\code\vc_hackathon_hub\.next\dev\server\chunks\[turbopack]_runtime.js:738:12)
+    at Context.esmImport [as i] (c:\Users\alvarez\Documents\code\vc_hackathon_hub\.next\dev\server\chunks\[turbopack]_runtime.js:228:20)
+    at module evaluation (c:\Users\alvarez\Documents\code\vc_hackathon_hub\.next\dev\server\chunks\c5804_next_a792a27e._.js:11275:204)
+    at instantiateModule (c:\Users\alvarez\Documents\code\vc_hackathon_hub\.next\dev\server\chunks\[turbopack]_runtime.js:715:9)
+    at instantiateRuntimeModule (c:\Users\alvarez\Documents\code\vc_hackathon_hub\.next\dev\server\chunks\[turbopack]_runtime.js:743:12)
+    at getOrInstantiateRuntimeModule (c:\Users\alvarez\Documents\code\vc_hackathon_hub\.next\dev\server\chunks\[turbopack]_runtime.js:756:12)
+    at Object.m (c:\Users\alvarez\Documents\code\vc_hackathon_hub\.next\dev\server\chunks\[turbopack]_runtime.js:765:18)
+    at Object.<anonymous> (c:\Users\alvarez\Documents\code\vc_hackathon_hub\.next\dev\server\app\api\auth\[...nextauth]\route.js:9:3) {
+  page: '/api/auth/session'
+}
+ GET /api/auth/session 500 in 1661ms (compile: 1517ms, render: 144ms)
+ GET /api/auth/session 200 in 1284ms (compile: 1239ms, render: 45ms)
+ GET / 200 in 3.2s (compile: 3.0s, render: 227ms)
+[?25h
