@@ -127,14 +127,14 @@ export default function LeaderboardClient({
                     </h1>
                     <p className="text-muted-foreground text-lg uppercase tracking-widest">Hackathon Session Rankings</p>
                     {eventDeadline && (
-                        <Card className="mt-6 border-orange-500/50 bg-gradient-to-r from-orange-500/10 to-red-500/10">
-                            <CardContent className="pt-6">
-                                <div className="flex items-center justify-center gap-3">
-                                    <Clock className="w-5 h-5 text-orange-500" />
+                        <Card className="mt-8 border-2 border-orange-500 bg-gradient-to-r from-orange-500/20 to-red-500/20 shadow-lg shadow-orange-500/20">
+                            <CardContent className="pt-8 pb-8 px-6">
+                                <div className="flex items-center justify-center gap-4">
+                                    <Clock className="w-8 h-8 md:w-10 md:h-10 text-orange-500" />
                                     <div className="text-center">
-                                        <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Deadline</div>
-                                        <div className="text-lg font-bold text-foreground font-mono">{timeRemaining}</div>
-                                        <div className="text-xs text-muted-foreground mt-1">
+                                        <div className="text-sm md:text-base uppercase tracking-wider text-orange-400 font-semibold mb-2">Deadline</div>
+                                        <div className="text-3xl md:text-5xl font-black text-orange-500 font-mono mb-2">{timeRemaining}</div>
+                                        <div className="text-sm md:text-base text-orange-300/90 font-medium">
                                             {new Date(eventDeadline).toLocaleString()}
                                         </div>
                                     </div>
