@@ -12,7 +12,9 @@ export default async function LeaderboardPage() {
     const votingOpenConfig = await prisma.repoConfig.findUnique({ where: { key: "VOTING_OPEN" } });
     const isVotingOpen = votingOpenConfig?.value === "true";
 
+    // When voting is open, only show candidates; otherwise show all enrollments
     const enrollments = await prisma.enrollment.findMany({
+        where: isVotingOpen ? { isVotingCandidate: true } : undefined,
         include: {
             user: true,
             activities: {
@@ -67,10 +69,22 @@ export default async function LeaderboardPage() {
         };
     });
 
-    // Sort: Higher score first, then earlier completion time
+    // Sort: During voting, sort by votes (descending), then by score; otherwise by score
     rankings.sort((a, b) => {
-        if (b.score !== a.score) {
-            return b.score - a.score;
+        if (isVotingOpen) {
+            // During voting: sort by votes first (most votes at top)
+            if (b.voteCount !== a.voteCount) {
+                return (b.voteCount || 0) - (a.voteCount || 0);
+            }
+            // Tie-breaker: higher score
+            if (b.score !== a.score) {
+                return b.score - a.score;
+            }
+        } else {
+            // Normal mode: Higher score first
+            if (b.score !== a.score) {
+                return b.score - a.score;
+            }
         }
         return a.lastActivityTime - b.lastActivityTime; // Lower (earlier) time wins tie
     });

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,6 +20,46 @@ interface Ranking {
 }
 
 export default function LeaderboardClient({ initialRankings, totalMilestones, isVotingOpen }: { initialRankings: Ranking[], totalMilestones: number, isVotingOpen: boolean }) {
+    const [rankings, setRankings] = useState<Ranking[]>(initialRankings);
+    const [votingStatus, setVotingStatus] = useState(isVotingOpen);
+
+    // Poll for updates when voting is open
+    useEffect(() => {
+        if (!votingStatus) return;
+
+        const fetchLeaderboard = async () => {
+            try {
+                const res = await fetch("/api/leaderboard");
+                if (res.ok) {
+                    const data = await res.json();
+                    setRankings(data.rankings);
+                    setVotingStatus(data.isVotingOpen);
+                }
+            } catch (err) {
+                console.error("Failed to fetch leaderboard:", err);
+            }
+        };
+
+        // Poll every 3 seconds during voting for real-time updates
+        fetchLeaderboard();
+        const interval = setInterval(fetchLeaderboard, 3000);
+        return () => clearInterval(interval);
+    }, [votingStatus]);
+
+    // Also check if voting status changes
+    useEffect(() => {
+        setVotingStatus(isVotingOpen);
+        if (!isVotingOpen) {
+            // When voting closes, refresh to show all students again
+            fetch("/api/leaderboard")
+                .then(res => res.json())
+                .then(data => {
+                    setRankings(data.rankings);
+                })
+                .catch(err => console.error("Failed to fetch leaderboard:", err));
+        }
+    }, [isVotingOpen]);
+
     return (
         <div className="min-h-screen bg-background text-foreground p-4 md:p-8">
             <div className="max-w-3xl mx-auto space-y-8">
@@ -28,13 +69,15 @@ export default function LeaderboardClient({ initialRankings, totalMilestones, is
 
                 <div className="text-center space-y-4 mb-12">
                     <h1 className="text-4xl md:text-6xl font-black bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 animate-in fade-in slide-in-from-top-4 duration-700">
-                        LEADERBOARD
+                        {votingStatus ? "VOTING LEADERBOARD" : "LEADERBOARD"}
                     </h1>
-                    <p className="text-muted-foreground text-lg uppercase tracking-widest">Hackathon Session Rankings</p>
+                    <p className="text-muted-foreground text-lg uppercase tracking-widest">
+                        {votingStatus ? "Vote Rankings" : "Hackathon Session Rankings"}
+                    </p>
                 </div>
 
                 <div className="space-y-4">
-                    {initialRankings.map((rank, index) => {
+                    {rankings.map((rank, index) => {
                         const isFirst = index === 0;
                         const isSecond = index === 1;
                         const isThird = index === 2;
@@ -75,18 +118,29 @@ export default function LeaderboardClient({ initialRankings, totalMilestones, is
                                 </div>
 
                                 <div className="flex items-end gap-6">
-                                    <div className="text-right">
-                                        <div className="text-2xl font-black text-foreground leading-none">
-                                            {rank.score}
-                                        </div>
-                                        <div className="text-xs uppercase text-muted-foreground font-bold tracking-wider">Points</div>
-                                    </div>
-                                    {isVotingOpen && (
+                                    {votingStatus ? (
+                                        // During voting: Show votes prominently first, then points
+                                        <>
+                                            <div className="text-right">
+                                                <div className="text-3xl font-black text-foreground leading-none">
+                                                    {rank.voteCount || 0}
+                                                </div>
+                                                <div className="text-xs uppercase text-muted-foreground font-bold tracking-wider">Votes</div>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-xl font-black text-foreground leading-none opacity-70">
+                                                    {rank.score}
+                                                </div>
+                                                <div className="text-xs uppercase text-muted-foreground font-bold tracking-wider opacity-70">Points</div>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        // Normal mode: Show points
                                         <div className="text-right">
                                             <div className="text-2xl font-black text-foreground leading-none">
-                                                {rank.voteCount || 0}
+                                                {rank.score}
                                             </div>
-                                            <div className="text-xs uppercase text-muted-foreground font-bold tracking-wider">Votes</div>
+                                            <div className="text-xs uppercase text-muted-foreground font-bold tracking-wider">Points</div>
                                         </div>
                                     )}
                                 </div>
@@ -94,10 +148,10 @@ export default function LeaderboardClient({ initialRankings, totalMilestones, is
                         );
                     })}
 
-                    {initialRankings.length === 0 && (
+                    {rankings.length === 0 && (
                         <div className="text-center py-20 text-muted-foreground">
                             <Flame className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                            <p>No warriors have entered the arena yet.</p>
+                            <p>{votingStatus ? "No candidates selected for voting yet." : "No warriors have entered the arena yet."}</p>
                         </div>
                     )}
                 </div>
