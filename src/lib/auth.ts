@@ -3,8 +3,29 @@ import GithubProvider from "next-auth/providers/github"
 import { PrismaAdapter } from "@next-auth/prisma-adapter"
 import prisma from "@/lib/prisma"
 
+// #region agent log
+try {
+    const logAuthInit = {timestamp:Date.now(),sessionId:'debug-session',runId:'auth-debug-1',hypothesisId:'D',location:'src/lib/auth.ts:6',message:'authOptions initialization start',data:{prismaPresent:!!prisma}};
+    fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logAuthInit)}).catch(()=>{});
+} catch(e) {}
+// #endregion
+
 export const authOptions: NextAuthOptions = {
-    adapter: PrismaAdapter(prisma),
+    // #region agent log
+    adapter: (() => {
+        try {
+            const logAdapter = {timestamp:Date.now(),sessionId:'debug-session',runId:'auth-debug-1',hypothesisId:'D',location:'src/lib/auth.ts:13',message:'Before PrismaAdapter creation',data:{}};
+            fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logAdapter)}).catch(()=>{});
+            const adapter = PrismaAdapter(prisma);
+            const logAdapterSuccess = {timestamp:Date.now(),sessionId:'debug-session',runId:'auth-debug-1',hypothesisId:'D',location:'src/lib/auth.ts:16',message:'PrismaAdapter created successfully',data:{}};
+            fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logAdapterSuccess)}).catch(()=>{});
+            return adapter;
+        } catch (error: any) {
+            const logAdapterError = {timestamp:Date.now(),sessionId:'debug-session',runId:'auth-debug-1',hypothesisId:'D',location:'src/lib/auth.ts:20',message:'PrismaAdapter creation error',data:{error:error?.message,errorName:error?.name}};
+            fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logAdapterError)}).catch(()=>{});
+            throw error;
+        }
+    })(),
     providers: [
         GithubProvider({
             clientId: process.env.GITHUB_ID || "",

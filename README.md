@@ -16,6 +16,7 @@ A web tool for university course hackathons where students enroll, connect their
 - **npm** or **yarn** or **pnpm** or **bun**
 - **GitHub Account** (for OAuth authentication)
 - **GitHub OAuth App** (for authentication setup)
+- **Supabase Account** (for PostgreSQL database)
 
 ## Installation
 
@@ -36,10 +37,22 @@ A web tool for university course hackathons where students enroll, connect their
    bun install
    ```
 
-3. **Set up environment variables**:
+3. **Set up Supabase Database**:
+   
+   - Go to [supabase.com](https://supabase.com) and create an account/login
+   - Click "New Project" and fill in project details (name, database password, region)
+   - Wait for project creation (~2 minutes)
+   - Go to Settings → Database → Connection string
+   - Select "URI" tab and copy the connection string
+   - **For production/serverless (Vercel)**: Use the "Connection pooling" URI with `?pgbouncer=true&connection_limit=1` parameters
+
+4. **Set up environment variables**:
    
    Create a `.env` file in the root directory with the following variables:
    ```env
+   # Supabase Database (use connection pooling URI for production/serverless)
+   DATABASE_URL="postgresql://postgres:[YOUR-PASSWORD]@[PROJECT-REF].supabase.co:5432/postgres?pgbouncer=true&connection_limit=1"
+
    # NextAuth Configuration
    NEXTAUTH_URL=http://localhost:3000
    NEXTAUTH_SECRET=your-secret-key-here
@@ -50,9 +63,11 @@ A web tool for university course hackathons where students enroll, connect their
 
    # GitHub Webhook (optional, for automatic commit tracking)
    GITHUB_WEBHOOK_SECRET=your-github-webhook-secret
+   ```
 
-   # Database (optional, defaults to dev.db)
-   DATABASE_URL="file:./dev.db"
+   **Generate NEXTAUTH_SECRET:**
+   ```bash
+   openssl rand -base64 32
    ```
 
    **Setting up GitHub OAuth:**
@@ -66,13 +81,13 @@ A web tool for university course hackathons where students enroll, connect their
    - Set the webhook URL to: `http://localhost:3000/api/webhooks/github` (or your production URL)
    - Set the webhook secret and add it to your `.env` file
 
-4. **Set up the database**:
+5. **Set up the database**:
    ```bash
    npx prisma generate
    npx prisma migrate dev
    ```
 
-5. **Create an admin user** (optional):
+6. **Create an admin user** (optional):
    ```bash
    npm run tsx scripts/make-admin.ts <user-email>
    ```
@@ -110,6 +125,7 @@ npm start
 - `npm run build` - Build the application for production
 - `npm run start` - Start the production server
 - `npm run lint` - Run ESLint
+- `npm run migrate:deploy` - Run database migrations in production
 
 ### User Roles
 
@@ -128,13 +144,59 @@ npm start
 ## Technology Stack
 
 - **Framework**: [Next.js](https://nextjs.org) 16
-- **Database**: SQLite with [Prisma](https://www.prisma.io)
+- **Database**: PostgreSQL with [Supabase](https://supabase.com) and [Prisma](https://www.prisma.io)
 - **Authentication**: [NextAuth.js](https://next-auth.js.org) with GitHub OAuth
 - **Styling**: [Tailwind CSS](https://tailwindcss.com)
 - **UI Components**: [Radix UI](https://www.radix-ui.com)
+
+## Deployment
+
+### Deploying to Vercel
+
+1. **Push your code to GitHub** (if not already done)
+
+2. **Create Vercel Account/Login**:
+   - Go to [vercel.com](https://vercel.com)
+   - Sign up/login with GitHub
+
+3. **Import Project**:
+   - Click "Add New Project"
+   - Import your GitHub repository
+   - Vercel will auto-detect Next.js settings
+
+4. **Configure Environment Variables**:
+   In Vercel project settings → Environment Variables, add:
+   - `DATABASE_URL` - Supabase connection string (use pooling URI with `?pgbouncer=true&connection_limit=1`)
+   - `NEXTAUTH_URL` - Your Vercel URL (e.g., `https://your-app.vercel.app`)
+   - `NEXTAUTH_SECRET` - Same secret from your `.env` file
+   - `GITHUB_ID` - Your GitHub OAuth Client ID
+   - `GITHUB_SECRET` - Your GitHub OAuth Client Secret
+   - `GITHUB_WEBHOOK_SECRET` - If using webhooks
+
+5. **Deploy**:
+   - Click "Deploy"
+   - Wait for build to complete
+
+6. **Run Production Migrations**:
+   After first deployment, run migrations:
+   ```bash
+   npx prisma migrate deploy
+   ```
+   Or add to Vercel's build command: `npm run build && npx prisma migrate deploy`
+
+7. **Update GitHub OAuth**:
+   - Add production callback URL: `https://your-app.vercel.app/api/auth/callback/github`
+   - Update GitHub webhook URL if using: `https://your-app.vercel.app/api/webhooks/github`
+
+8. **Test Production**:
+   - Visit your Vercel URL
+   - Test authentication and database operations
+   - Create admin user if needed: `npx tsx scripts/make-admin.ts your-email@example.com`
 
 ## Learn More
 
 - [Next.js Documentation](https://nextjs.org/docs)
 - [Prisma Documentation](https://www.prisma.io/docs)
 - [NextAuth.js Documentation](https://next-auth.js.org)
+- [Supabase Documentation](https://supabase.com/docs)
+- [Vercel Documentation](https://vercel.com/docs)

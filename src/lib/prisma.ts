@@ -1,29 +1,57 @@
 import { PrismaClient } from '@prisma/client'
-import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
+import { PrismaPg } from '@prisma/adapter-pg'
 
 const prismaClientSingleton = () => {
   // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/0a238678-0e94-473d-9dc8-0b43e9b75d4d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/lib/prisma.ts:5',message:'prismaClientSingleton entry',data:{dbUrlPresent:!!process.env.DATABASE_URL,dbUrlValue:process.env.DATABASE_URL?.substring(0,30)},timestamp:Date.now(),sessionId:'debug-session',runId:'runtime-debug-post-fix',hypothesisId:'B'})}).catch(()=>{});
-  // #endregion
-  const connectionString = process.env.DATABASE_URL?.replace("file:", "") || "dev.db"
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/0a238678-0e94-473d-9dc8-0b43e9b75d4d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/lib/prisma.ts:8',message:'before adapter creation',data:{connectionString},timestamp:Date.now(),sessionId:'debug-session',runId:'runtime-debug-post-fix',hypothesisId:'B'})}).catch(()=>{});
-  // #endregion
-  const adapter = new PrismaBetterSqlite3({ url: connectionString })
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/0a238678-0e94-473d-9dc8-0b43e9b75d4d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/lib/prisma.ts:11',message:'before PrismaClient construction',data:{adapterType:typeof adapter},timestamp:Date.now(),sessionId:'debug-session',runId:'runtime-debug-post-fix',hypothesisId:'B'})}).catch(()=>{});
+  try {
+    const logData = {timestamp:Date.now(),sessionId:'debug-session',runId:'auth-debug-4',hypothesisId:'C',location:'src/lib/prisma.ts:6',message:'PrismaClient singleton called',data:{dbUrlPresent:!!process.env.DATABASE_URL,dbUrlLength:process.env.DATABASE_URL?.length || 0}};
+    fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch(()=>{});
+  } catch(e) {}
   // #endregion
   try {
+    // #region agent log
+    try {
+      const logData2 = {timestamp:Date.now(),sessionId:'debug-session',runId:'auth-debug-4',hypothesisId:'C',location:'src/lib/prisma.ts:12',message:'Before adapter and PrismaClient construction',data:{}};
+      fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData2)}).catch(()=>{});
+    } catch(e) {}
+    // #endregion
+    // Prisma 7 requires using an adapter for PostgreSQL
+    // Ensure the connection string is properly formatted as a string
+    const connectionString = String(process.env.DATABASE_URL || '')
+    if (!connectionString) {
+      throw new Error('DATABASE_URL environment variable is not set')
+    }
+    // #region agent log
+    try {
+      const logConnectionString = {timestamp:Date.now(),sessionId:'debug-session',runId:'auth-debug-4',hypothesisId:'C',location:'src/lib/prisma.ts:20',message:'Connection string extracted',data:{hasConnectionString:!!connectionString,connectionStringLength:connectionString.length,connectionStringStart:connectionString?.substring(0,40)}};
+      fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logConnectionString)}).catch(()=>{});
+    } catch(e) {}
+    // #endregion
+    // PrismaPg adapter accepts connectionString directly
+    // It handles connection string parsing internally including special characters
+    const adapter = new PrismaPg({ connectionString })
+    // #region agent log
+    try {
+      const logAdapterCreated = {timestamp:Date.now(),sessionId:'debug-session',runId:'auth-debug-4',hypothesisId:'C',location:'src/lib/prisma.ts:29',message:'Adapter created',data:{}};
+      fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logAdapterCreated)}).catch(()=>{});
+    } catch(e) {}
+    // #endregion
     const client = new PrismaClient({ adapter })
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/0a238678-0e94-473d-9dc8-0b43e9b75d4d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/lib/prisma.ts:15',message:'PrismaClient constructed successfully',data:{clientType:typeof client},timestamp:Date.now(),sessionId:'debug-session',runId:'runtime-debug-post-fix',hypothesisId:'B'})}).catch(()=>{});
+    try {
+      const logData3 = {timestamp:Date.now(),sessionId:'debug-session',runId:'auth-debug-4',hypothesisId:'C',location:'src/lib/prisma.ts:33',message:'PrismaClient constructed successfully with adapter',data:{}};
+      fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData3)}).catch(()=>{});
+    } catch(e) {}
     // #endregion
     return client
-  } catch (e: any) {
+  } catch (error: any) {
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/0a238678-0e94-473d-9dc8-0b43e9b75d4d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/lib/prisma.ts:20',message:'PrismaClient construction error',data:{error:e.message,errorName:e.name,stack:e.stack?.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',runId:'runtime-debug-post-fix',hypothesisId:'B'})}).catch(()=>{});
+    try {
+      const logErr = {timestamp:Date.now(),sessionId:'debug-session',runId:'auth-debug-4',hypothesisId:'C',location:'src/lib/prisma.ts:38',message:'PrismaClient construction error',data:{error:error?.message,errorName:error?.name,errorCode:error?.errorCode,stack:error?.stack?.substring(0,400)}};
+      fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logErr)}).catch(()=>{});
+    } catch(e) {}
     // #endregion
-    throw e
+    throw error
   }
 }
 
@@ -32,6 +60,13 @@ type PrismaClientSingleton = ReturnType<typeof prismaClientSingleton>
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClientSingleton | undefined
 }
+
+// #region agent log
+try {
+  const logData4 = {timestamp:Date.now(),sessionId:'debug-session',runId:'auth-debug-4',hypothesisId:'C',location:'src/lib/prisma.ts:53',message:'Before prisma singleton call',data:{hasGlobalPrisma:!!globalForPrisma.prisma}};
+  fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData4)}).catch(()=>{});
+} catch(e) {}
+// #endregion
 
 const prisma = globalForPrisma.prisma ?? prismaClientSingleton()
 
