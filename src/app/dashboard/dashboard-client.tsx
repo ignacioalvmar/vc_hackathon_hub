@@ -24,8 +24,8 @@ interface Milestone {
 interface Activity {
     milestoneId: string;
     timestamp: string;
-    commitHash: string;
-    commitMessage: string;
+    commitHash: string | null;
+    commitMessage: string | null;
 }
 
 interface Enrollment {
