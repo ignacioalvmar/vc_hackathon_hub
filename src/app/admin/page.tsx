@@ -1,17 +1,36 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import AdminClient from "./admin-client";
+import UnauthorizedMessage from "./unauthorized-message";
 
 export default async function AdminPage() {
     const session = await getServerSession(authOptions);
 
-    // @ts-ignore
-    if (!session || session.user?.role !== "ADMIN") {
-        // redirect("/"); // TODO: Uncomment for real auth protection
+    // Check authentication
+    if (!session || !session.user?.id) {
+        return <UnauthorizedMessage />;
     }
 
+    // Check role from session first, then fallback to database check
+    // @ts-ignore
+    let userRole = session.user?.role;
+    
+    // If role is not ADMIN in session, check database directly
+    if (userRole !== "ADMIN") {
+        const dbUser = await prisma.user.findUnique({
+            where: { id: session.user.id },
+            select: { role: true }
+        });
+        userRole = dbUser?.role || userRole;
+    }
+
+    // If not admin, show unauthorized message
+    if (userRole !== "ADMIN") {
+        return <UnauthorizedMessage />;
+    }
+
+    // Only fetch data if user is admin
     // Fetch all enrollments with detailed activity
     const enrollments = await prisma.enrollment.findMany({
         include: {

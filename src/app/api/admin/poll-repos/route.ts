@@ -35,6 +35,10 @@ export async function POST(req: Request) {
             if (!enrollment.repoUrl) continue
 
             try {
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'poll-repos/route.ts:34',message:'Processing enrollment',data:{enrollmentId:enrollment.id,userEmail:enrollment.user.email,repoUrl:enrollment.repoUrl,activityCount:enrollment.activities.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+                // #endregion
+
                 // Parse GitHub repo URL to get owner/repo
                 // Format: https://github.com/owner/repo
                 const urlMatch = enrollment.repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/)
@@ -46,19 +50,27 @@ export async function POST(req: Request) {
                 const [, owner, repo] = urlMatch
                 const repoName = repo.replace(/\.git$/, '') // Remove .git suffix if present
 
-                // Get the most recent commit hash we've seen (if any)
+                // Get all processed commit hashes to filter duplicates
+                // This is more reliable than using timestamps
+                const processedCommitHashes = new Set(enrollment.activities
+                    .filter(a => a.commitHash)
+                    .map(a => a.commitHash))
+                
+                // #region agent log
                 const lastActivity = enrollment.activities
                     .filter(a => a.commitHash)
                     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]
-                
-                const sinceParam = lastActivity?.timestamp 
-                    ? `&since=${new Date(lastActivity.timestamp).toISOString()}`
-                    : ''
+                fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'poll-repos/route.ts:52',message:'Last activity check',data:{enrollmentId:enrollment.id,lastActivityTimestamp:lastActivity?.timestamp,lastActivityCommitHash:lastActivity?.commitHash,hasLastActivity:!!lastActivity,processedCommitCount:processedCommitHashes.size},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+                // #endregion
 
-                // Fetch commits from GitHub API
-                // Using public API - no auth required for public repos
-                // For private repos, we'd need to use the student's GitHub token
-                const apiUrl = `https://api.github.com/repos/${owner}/${repoName}/commits?per_page=30${sinceParam}`
+                // Fetch recent commits without since parameter - we'll filter by commit SHA instead
+                // This ensures we don't miss commits due to timestamp issues
+                // We fetch the last 30 commits and filter out ones we've already processed
+                const apiUrl = `https://api.github.com/repos/${owner}/${repoName}/commits?per_page=30`
+
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'poll-repos/route.ts:56',message:'GitHub API URL',data:{owner,repoName,apiUrl,strategy:'Fetch last 30 commits and filter by SHA'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B,E'})}).catch(()=>{});
+                // #endregion
                 
                 const response = await fetch(apiUrl, {
                     headers: {
@@ -66,6 +78,10 @@ export async function POST(req: Request) {
                         'User-Agent': 'VC-Hackathon-Hub'
                     }
                 })
+
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'poll-repos/route.ts:68',message:'GitHub API response',data:{status:response.status,statusText:response.statusText,ok:response.ok},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+                // #endregion
 
                 if (!response.ok) {
                     // If 404, repo might be private or not exist
@@ -76,17 +92,38 @@ export async function POST(req: Request) {
                         })
                         continue
                     }
+                    // Handle rate limiting gracefully - skip this repo but continue with others
+                    if (response.status === 403) {
+                        // #region agent log
+                        fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'poll-repos/route.ts:95',message:'Rate limit hit - skipping repo',data:{enrollmentId:enrollment.id,repoUrl:enrollment.repoUrl},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+                        // #endregion
+                        errors.push({ 
+                            repo: enrollment.repoUrl, 
+                            error: "GitHub API rate limit exceeded - will retry on next poll" 
+                        })
+                        continue
+                    }
                     throw new Error(`GitHub API error: ${response.status} ${response.statusText}`)
                 }
 
                 const commits: any[] = await response.json()
 
-                // Transform GitHub API commits to our format
-                const commitData: CommitData[] = commits.map((commit: any) => ({
-                    id: commit.sha,
-                    message: commit.commit.message,
-                    timestamp: commit.commit.author.date
-                }))
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'poll-repos/route.ts:82',message:'Commits fetched from GitHub',data:{enrollmentId:enrollment.id,commitCount:commits.length,commitMessages:commits.slice(0,5).map((c:any)=>({sha:c.sha,message:c.commit.message.substring(0,100),date:c.commit.author.date}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C,E'})}).catch(()=>{});
+                // #endregion
+
+                // Transform GitHub API commits to our format and filter out already-processed commits
+                const commitData: CommitData[] = commits
+                    .filter((commit: any) => !processedCommitHashes.has(commit.sha))
+                    .map((commit: any) => ({
+                        id: commit.sha,
+                        message: commit.commit.message,
+                        timestamp: commit.commit.author.date
+                    }))
+
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'poll-repos/route.ts:90',message:'Transformed commit data',data:{enrollmentId:enrollment.id,totalCommits:commits.length,filteredCommitCount:commitData.length,commitDataPreview:commitData.slice(0,3).map(c=>({id:c.id,messagePreview:c.message.substring(0,100),timestamp:c.timestamp}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                // #endregion
 
                 // Process commits
                 const result = await processCommitsForEnrollment(
@@ -94,6 +131,10 @@ export async function POST(req: Request) {
                     enrollment.repoUrl,
                     commitData
                 )
+
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'poll-repos/route.ts:96',message:'Processing result',data:{enrollmentId:enrollment.id,processed:result.processed,newActivities:result.newActivities},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+                // #endregion
 
                 results.push({
                     student: enrollment.user.name || enrollment.user.email,

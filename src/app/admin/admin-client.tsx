@@ -94,6 +94,7 @@ function SortablePanel({ id, children, isMinimized, onToggleMinimize, className 
             <div
                 {...attributes}
                 {...listeners}
+                suppressHydrationWarning
                 className="absolute top-2 left-2 w-6 h-6 flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-accent/70 rounded transition-colors z-20 group"
                 title="Drag to reorder"
             >
@@ -108,7 +109,9 @@ export default function AdminClient({ initialEnrollments, initialMilestones }: {
     const [enrollments, setEnrollments] = useState(initialEnrollments);
     const [webhookStatus, setWebhookStatus] = useState<WebhookStatus | null>(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
-    const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+    // Initialize with epoch date to ensure server/client match during hydration
+    // Will be updated to current time after hydration on client
+    const [lastRefresh, setLastRefresh] = useState<Date>(new Date(0));
     const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
     const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -156,31 +159,31 @@ export default function AdminClient({ initialEnrollments, initialMilestones }: {
 
     const DEFAULT_MINIMIZED = [PANEL_IDS.CREATE_MILESTONE];
 
-    // Load panel state from localStorage
-    const loadPanelState = () => {
-        if (typeof window === 'undefined') {
-            return { order: DEFAULT_PANEL_ORDER, minimized: DEFAULT_MINIMIZED };
-        }
+    // Initialize with defaults to ensure server/client match during hydration
+    const [panelOrder, setPanelOrder] = useState<string[]>(DEFAULT_PANEL_ORDER);
+    const [minimizedPanels, setMinimizedPanels] = useState<Set<string>>(() => {
+        // Always use defaults for initial render to match server
+        return new Set(DEFAULT_MINIMIZED);
+    });
+
+    // Load panel state from localStorage after hydration (client-only)
+    useEffect(() => {
         try {
             const saved = localStorage.getItem('admin-dashboard-panel-state');
             if (saved) {
                 const parsed = JSON.parse(saved);
-                return {
-                    order: parsed.order || DEFAULT_PANEL_ORDER,
-                    minimized: parsed.minimized || DEFAULT_MINIMIZED,
-                };
+                setPanelOrder(parsed.order || DEFAULT_PANEL_ORDER);
+                setMinimizedPanels(new Set(parsed.minimized || DEFAULT_MINIMIZED));
             }
         } catch (e) {
             console.error('Failed to load panel state:', e);
         }
-        return { order: DEFAULT_PANEL_ORDER, minimized: DEFAULT_MINIMIZED };
-    };
+    }, []); // Only run once after mount (after hydration)
 
-    const [panelOrder, setPanelOrder] = useState<string[]>(() => loadPanelState().order);
-    const [minimizedPanels, setMinimizedPanels] = useState<Set<string>>(() => {
-        const state = loadPanelState();
-        return new Set(state.minimized);
-    });
+    // Set initial lastRefresh time after hydration to avoid hydration mismatch
+    useEffect(() => {
+        setLastRefresh(new Date());
+    }, []); // Only run once after mount (after hydration)
 
     // Save panel state to localStorage
     const savePanelState = useCallback((order: string[], minimized: string[]) => {
@@ -232,31 +235,16 @@ export default function AdminClient({ initialEnrollments, initialMilestones }: {
 
     // Fetch voting status
     const fetchVotingStatus = async () => {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/0a238678-0e94-473d-9dc8-0b43e9b75d4d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-client.tsx:88',message:'fetchVotingStatus called',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
         try {
             const res = await fetch("/api/admin/vote-control");
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/0a238678-0e94-473d-9dc8-0b43e9b75d4d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-client.tsx:91',message:'fetchVotingStatus response',data:{status:res.status,ok:res.ok,statusText:res.statusText},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'B'})}).catch(()=>{});
-            // #endregion
             if (res.ok) {
                 const data = await res.json();
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/0a238678-0e94-473d-9dc8-0b43e9b75d4d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-client.tsx:94',message:'fetchVotingStatus success',data:data,timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'B'})}).catch(()=>{});
-                // #endregion
                 setVotingStatus(data);
             } else {
                 const errorText = await res.text();
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/0a238678-0e94-473d-9dc8-0b43e9b75d4d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-client.tsx:98',message:'fetchVotingStatus error response',data:{status:res.status,errorText},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'B'})}).catch(()=>{});
-                // #endregion
                 console.error("Failed to fetch voting status:", res.status, errorText);
             }
         } catch (err) {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/0a238678-0e94-473d-9dc8-0b43e9b75d4d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-client.tsx:102',message:'fetchVotingStatus exception',data:{error:err instanceof Error ? err.message : String(err)},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'B'})}).catch(()=>{});
-            // #endregion
             console.error("Failed to fetch voting status:", err);
         }
     };
@@ -276,9 +264,6 @@ export default function AdminClient({ initialEnrollments, initialMilestones }: {
 
     // Save candidate selection
     const saveCandidates = async () => {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/0a238678-0e94-473d-9dc8-0b43e9b75d4d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-client.tsx:113',message:'saveCandidates called',data:{selectedCount:selectedCandidates.size,selectedIds:Array.from(selectedCandidates)},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
         setSavingCandidates(true);
         try {
             const res = await fetch("/api/admin/vote-candidates", {
@@ -286,27 +271,15 @@ export default function AdminClient({ initialEnrollments, initialMilestones }: {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ enrollmentIds: Array.from(selectedCandidates) })
             });
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/0a238678-0e94-473d-9dc8-0b43e9b75d4d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-client.tsx:121',message:'saveCandidates response',data:{status:res.status,ok:res.ok,statusText:res.statusText},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'A'})}).catch(()=>{});
-            // #endregion
             if (res.ok) {
                 const data = await res.json();
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/0a238678-0e94-473d-9dc8-0b43e9b75d4d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-client.tsx:124',message:'saveCandidates success',data:data,timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'A'})}).catch(()=>{});
-                // #endregion
                 await fetchEnrollments();
                 await fetchVotingStatus();
             } else {
                 const errorText = await res.text();
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/0a238678-0e94-473d-9dc8-0b43e9b75d4d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-client.tsx:128',message:'saveCandidates error response',data:{status:res.status,errorText},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'C'})}).catch(()=>{});
-                // #endregion
                 console.error("Failed to save candidates:", res.status, errorText);
             }
         } catch (err) {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/0a238678-0e94-473d-9dc8-0b43e9b75d4d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-client.tsx:132',message:'saveCandidates exception',data:{error:err instanceof Error ? err.message : String(err)},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'C'})}).catch(()=>{});
-            // #endregion
             console.error("Failed to save candidates:", err);
         } finally {
             setSavingCandidates(false);
@@ -315,9 +288,6 @@ export default function AdminClient({ initialEnrollments, initialMilestones }: {
 
     // Toggle voting open/close
     const toggleVoting = async (action: "OPEN" | "CLOSE") => {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/0a238678-0e94-473d-9dc8-0b43e9b75d4d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-client.tsx:133',message:'toggleVoting called',data:{action,currentStatus:votingStatus},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion
         setTogglingVote(true);
         try {
             const res = await fetch("/api/admin/vote-control", {
@@ -325,27 +295,15 @@ export default function AdminClient({ initialEnrollments, initialMilestones }: {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ action })
             });
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/0a238678-0e94-473d-9dc8-0b43e9b75d4d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-client.tsx:140',message:'toggleVoting response',data:{status:res.status,ok:res.ok,statusText:res.statusText},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'D'})}).catch(()=>{});
-            // #endregion
             if (res.ok) {
                 const data = await res.json();
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/0a238678-0e94-473d-9dc8-0b43e9b75d4d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-client.tsx:143',message:'toggleVoting success',data:data,timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'D'})}).catch(()=>{});
-                // #endregion
                 await fetchVotingStatus();
                 await fetchEnrollments();
             } else {
                 const errorText = await res.text();
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/0a238678-0e94-473d-9dc8-0b43e9b75d4d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-client.tsx:147',message:'toggleVoting error response',data:{status:res.status,errorText},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'C'})}).catch(()=>{});
-                // #endregion
                 console.error("Failed to toggle voting:", res.status, errorText);
             }
         } catch (err) {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/0a238678-0e94-473d-9dc8-0b43e9b75d4d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-client.tsx:151',message:'toggleVoting exception',data:{error:err instanceof Error ? err.message : String(err)},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'C'})}).catch(()=>{});
-            // #endregion
             console.error("Failed to toggle voting:", err);
         } finally {
             setTogglingVote(false);
@@ -925,21 +883,12 @@ export default function AdminClient({ initialEnrollments, initialMilestones }: {
                             </TableHeader>
                             <TableBody>
                                 {enrollments.map((e) => {
-                                    // #region agent log
-                                    fetch('http://127.0.0.1:7242/ingest/0a238678-0e94-473d-9dc8-0b43e9b75d4d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-client.tsx:597',message:'Enrollment data check',data:{enrollmentId:e.id,userName:e.user.name,activitiesCount:e.activities?.length||0,activitiesSample:e.activities?.slice(0,2)||[],milestonesTotal:milestones.length,firstActivityKeys:e.activities?.[0]?Object.keys(e.activities[0]):[]},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'D'})}).catch(()=>{});
-                                    // #endregion
                                     const milestoneIds = e.activities.map(a => a.milestoneId);
-                                    // #region agent log
-                                    fetch('http://127.0.0.1:7242/ingest/0a238678-0e94-473d-9dc8-0b43e9b75d4d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-client.tsx:599',message:'Milestone IDs extraction',data:{enrollmentId:e.id,userName:e.user.name,milestoneIds,milestoneIdsLength:milestoneIds.length,uniqueMilestoneIds:Array.from(new Set(milestoneIds))},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'D'})}).catch(()=>{});
-                                    // #endregion
                                     const completedCount = new Set(milestoneIds).size;
                                     const percentage = milestones.length > 0 ? (completedCount / milestones.length) * 100 : 0;
                                     const lastActivity = e.activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
                                     // Highlight students who have completed 7 or 8 out of 8 milestones (near completion or fully completed)
                                     const isNearCompletion = (completedCount === 7 || completedCount === 8) && milestones.length === 8;
-                                    // #region agent log
-                                    fetch('http://127.0.0.1:7242/ingest/0a238678-0e94-473d-9dc8-0b43e9b75d4d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-client.tsx:600',message:'Condition evaluation',data:{enrollmentId:e.id,userName:e.user.name,completedCount,completedMilestones:Array.from(new Set(e.activities.map(a => a.milestoneId))),milestonesTotal:milestones.length,isNearCompletion,conditionCheck:`(${completedCount}===7 || ${completedCount}===8) && ${milestones.length}===8`},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'})}).catch(()=>{});
-                                    // #endregion
 
                                     const rowClassName = cn(
                                         isNearCompletion && "relative outline outline-2 outline-yellow-400 dark:outline-yellow-500 outline-offset-2 shadow-[0_0_25px_rgba(234,179,8,0.7),0_0_50px_rgba(234,179,8,0.4)] dark:shadow-[0_0_25px_rgba(234,179,8,0.6),0_0_50px_rgba(234,179,8,0.3)]"
@@ -947,9 +896,6 @@ export default function AdminClient({ initialEnrollments, initialMilestones }: {
                                     const rowStyle = isNearCompletion ? {
                                         boxShadow: '0 0 25px rgba(234, 179, 8, 0.7), 0 0 50px rgba(234, 179, 8, 0.4), inset 0 0 20px rgba(234, 179, 8, 0.2)'
                                     } : undefined;
-                                    // #region agent log
-                                    fetch('http://127.0.0.1:7242/ingest/0a238678-0e94-473d-9dc8-0b43e9b75d4d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-client.tsx:603',message:'Style application check',data:{enrollmentId:e.id,userName:e.user.name,isNearCompletion,rowClassName,hasRowStyle:!!rowStyle,rowStyleKeys:rowStyle?Object.keys(rowStyle):[]},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'B'})}).catch(()=>{});
-                                    // #endregion
                                     return (
                                         <TableRow 
                                             key={e.id}
@@ -1038,7 +984,7 @@ export default function AdminClient({ initialEnrollments, initialMilestones }: {
                     <div>
                         <h1 className="text-3xl font-bold">Professor Configuration Dashboard</h1>
                         <p className="text-sm text-muted-foreground mt-1">
-                            Last updated: {lastRefresh.toLocaleTimeString()}
+                            Last updated: <span suppressHydrationWarning>{lastRefresh.toLocaleTimeString()}</span>
                             {autoRefreshEnabled && (
                                 <span className="ml-2 text-green-500">� Auto-refresh: ON (10s)</span>
                             )}
