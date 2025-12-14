@@ -55,6 +55,10 @@ export async function POST(req: Request) {
             // #region agent log
             fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'event-timer/route.ts:54',message:'Deadline saved to DB',data:{deadline},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'A'})}).catch(()=>{});
             // #endregion
+            // #region agent log
+            const verifyConfig = await prisma.repoConfig.findUnique({ where: { key: "EVENT_DEADLINE" } });
+            fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'event-timer/route.ts:58',message:'Deadline verified in DB after save',data:{savedValue:verifyConfig?.value,deadline},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'A'})}).catch(()=>{});
+            // #endregion
         }
 
         return NextResponse.json({ success: true })

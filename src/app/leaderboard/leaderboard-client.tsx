@@ -3,7 +3,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Trophy, Medal, Award, Flame } from "lucide-react";
+import { Trophy, Medal, Award, Flame, Clock } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useEffect, useState } from "react";
 
@@ -33,6 +33,52 @@ export default function LeaderboardClient({
     const [rankings, setRankings] = useState<Ranking[]>(initialRankings);
     const [eventDeadline, setEventDeadline] = useState<string | null>(initialEventDeadline);
     const [votingOpen, setVotingOpen] = useState<boolean>(isVotingOpen);
+    const [timeRemaining, setTimeRemaining] = useState<string>("");
+
+    // Log initial deadline on mount
+    useEffect(() => {
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leaderboard-client.tsx:37',message:'Component initialized with deadline',data:{initialEventDeadline},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion
+    }, []);
+
+    // Update countdown timer
+    useEffect(() => {
+        if (!eventDeadline) {
+            setTimeRemaining("");
+            return;
+        }
+
+        const updateCountdown = () => {
+            const now = new Date().getTime();
+            const deadline = new Date(eventDeadline).getTime();
+            const diff = deadline - now;
+
+            if (diff <= 0) {
+                setTimeRemaining("Deadline passed");
+                return;
+            }
+
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+            if (days > 0) {
+                setTimeRemaining(`${days}d ${hours}h ${minutes}m ${seconds}s`);
+            } else if (hours > 0) {
+                setTimeRemaining(`${hours}h ${minutes}m ${seconds}s`);
+            } else if (minutes > 0) {
+                setTimeRemaining(`${minutes}m ${seconds}s`);
+            } else {
+                setTimeRemaining(`${seconds}s`);
+            }
+        };
+
+        updateCountdown();
+        const interval = setInterval(updateCountdown, 1000);
+        return () => clearInterval(interval);
+    }, [eventDeadline]);
 
     // Poll for leaderboard updates
     useEffect(() => {
@@ -47,7 +93,13 @@ export default function LeaderboardClient({
                 });
                 if (res.ok) {
                     const data = await res.json();
+                    // #region agent log
+                    fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leaderboard-client.tsx:49',message:'API response received',data:{hasEventDeadline:!!data.eventDeadline,eventDeadline:data.eventDeadline},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'C'})}).catch(()=>{});
+                    // #endregion
                     setRankings(data.rankings || []);
+                    // #region agent log
+                    fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leaderboard-client.tsx:53',message:'Setting eventDeadline state',data:{newDeadline:data.eventDeadline || null,currentDeadline:eventDeadline},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'C'})}).catch(()=>{});
+                    // #endregion
                     setEventDeadline(data.eventDeadline || null);
                     setVotingOpen(data.isVotingOpen || false);
                 }
@@ -74,6 +126,22 @@ export default function LeaderboardClient({
                         LEADERBOARD
                     </h1>
                     <p className="text-muted-foreground text-lg uppercase tracking-widest">Hackathon Session Rankings</p>
+                    {eventDeadline && (
+                        <Card className="mt-6 border-orange-500/50 bg-gradient-to-r from-orange-500/10 to-red-500/10">
+                            <CardContent className="pt-6">
+                                <div className="flex items-center justify-center gap-3">
+                                    <Clock className="w-5 h-5 text-orange-500" />
+                                    <div className="text-center">
+                                        <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Deadline</div>
+                                        <div className="text-lg font-bold text-foreground font-mono">{timeRemaining}</div>
+                                        <div className="text-xs text-muted-foreground mt-1">
+                                            {new Date(eventDeadline).toLocaleString()}
+                                        </div>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
 
                 <div className="space-y-4">

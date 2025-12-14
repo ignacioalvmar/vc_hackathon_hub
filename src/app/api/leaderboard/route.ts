@@ -17,6 +17,9 @@ export async function GET(req: Request) {
             where: { key: "EVENT_DEADLINE" } 
         });
         const eventDeadline = deadlineConfig?.value || null;
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/leaderboard/route.ts:19',message:'Deadline fetched from DB',data:{deadlineConfig:deadlineConfig?.value,eventDeadline},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
 
         // When voting is open, only show candidates; otherwise show all enrollments
         const enrollments = await prisma.enrollment.findMany({
@@ -92,12 +95,16 @@ export async function GET(req: Request) {
             return a.lastActivityTime - b.lastActivityTime; // Lower (earlier) time wins tie
         });
 
-        const response = NextResponse.json({
+        const responseData = {
             rankings,
             isVotingOpen,
             totalMilestones: milestones.length,
             eventDeadline
-        });
+        };
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/leaderboard/route.ts:99',message:'API response includes deadline',data:{eventDeadlineInResponse:responseData.eventDeadline},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
+        const response = NextResponse.json(responseData);
         
         // Prevent caching in production (Vercel)
         response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
