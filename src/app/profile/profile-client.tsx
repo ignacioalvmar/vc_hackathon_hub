@@ -49,8 +49,8 @@ export default function ProfileClient({
         
         try {
             const result = await updateProfile({
-                name: name || null,
-                image: image || null,
+                name: name || undefined,
+                image: image || undefined,
                 repoUrl: repoUrl || null,
             });
             
