@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Trophy, Medal, Award, Flame } from "lucide-react";
+import { Trophy, Medal, Award, Flame, CheckCircle } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 interface Ranking {
@@ -81,32 +81,44 @@ export default function LeaderboardClient({ initialRankings, totalMilestones, is
                         const isFirst = index === 0;
                         const isSecond = index === 1;
                         const isThird = index === 2;
+                        const isNearCompletion = !votingStatus && (rank.completedCount === 7 || rank.completedCount === 8);
 
                         return (
                             <div
                                 key={rank.id}
                                 className={`
                             relative flex items-center gap-4 p-4 rounded-2xl border transition-all duration-300 hover:scale-[1.02]
-                            ${isFirst ? 'bg-gradient-to-r from-yellow-500/20 dark:from-yellow-900/20 to-background dark:to-black border-yellow-500 dark:border-yellow-600/50 shadow-[0_0_30px_rgba(234,179,8,0.1)]' : ''}
+                            ${isFirst && votingStatus ? 'bg-gradient-to-r from-yellow-500/20 dark:from-yellow-900/20 to-background dark:to-black border-yellow-500 dark:border-yellow-600/50 shadow-[0_0_30px_rgba(234,179,8,0.1)]' : ''}
+                            ${isNearCompletion ? 'bg-gradient-to-r from-yellow-500/20 dark:from-yellow-900/20 to-background dark:to-black border-yellow-500 dark:border-yellow-600/50 shadow-[0_0_30px_rgba(234,179,8,0.1)]' : ''}
                             ${isSecond ? 'bg-card/50 border-border' : ''}
                             ${isThird ? 'bg-card/30 border-border' : ''}
-                            ${index > 2 ? 'bg-muted/30 border-border rounded-none border-x-0 border-t-0 hover:bg-muted/50' : ''}
+                            ${index > 2 && !isNearCompletion ? 'bg-muted/30 border-border rounded-none border-x-0 border-t-0 hover:bg-muted/50' : ''}
                         `}
                             >
                                 <div className="w-12 text-center font-bold text-xl flex justify-center">
-                                    {isFirst ? <Trophy className="w-8 h-8 text-yellow-500" /> :
+                                    {votingStatus ? (
+                                        // Voting mode: Gold/Silver/Bronze Trophy for top 3
+                                        isFirst ? <Trophy className="w-8 h-8 text-yellow-500" /> :
+                                        isSecond ? <Trophy className="w-8 h-8 text-gray-400" /> :
+                                        isThird ? <Trophy className="w-8 h-8 text-amber-700" /> :
+                                        <span className="text-muted-foreground">#{index + 1}</span>
+                                    ) : (
+                                        // Non-voting mode: Golden CheckCircle for 7-8 milestones, otherwise Trophy/Medal/Award
+                                        isNearCompletion ? <CheckCircle className="w-8 h-8 text-yellow-500" /> :
+                                        isFirst ? <Trophy className="w-8 h-8 text-yellow-500" /> :
                                         isSecond ? <Medal className="w-8 h-8 text-muted-foreground" /> :
-                                            isThird ? <Award className="w-8 h-8 text-amber-600 dark:text-amber-700" /> :
-                                                <span className="text-muted-foreground">#{index + 1}</span>}
+                                        isThird ? <Award className="w-8 h-8 text-amber-600 dark:text-amber-700" /> :
+                                        <span className="text-muted-foreground">#{index + 1}</span>
+                                    )}
                                 </div>
 
-                                <Avatar className={`w-12 h-12 border-2 ${isFirst ? 'border-yellow-500' : 'border-transparent'}`}>
+                                <Avatar className={`w-12 h-12 border-2 ${(isFirst && votingStatus) || isNearCompletion ? 'border-yellow-500' : 'border-transparent'}`}>
                                     <AvatarImage src={rank.user.image || undefined} />
                                     <AvatarFallback>{rank.user.name?.[0]}</AvatarFallback>
                                 </Avatar>
 
                                 <div className="flex-1">
-                                    <h3 className={`font-bold text-lg ${isFirst ? 'text-yellow-500' : 'text-foreground'}`}>
+                                    <h3 className={`font-bold text-lg ${(isFirst && votingStatus) || isNearCompletion ? 'text-yellow-500' : 'text-foreground'}`}>
                                         {rank.user.name}
                                     </h3>
                                     <div className="flex gap-2 text-xs text-muted-foreground font-mono items-center">
