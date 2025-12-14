@@ -17,7 +17,17 @@ interface Ranking {
     lastActivityTime: number;
 }
 
-export default function LeaderboardClient({ initialRankings, totalMilestones }: { initialRankings: Ranking[], totalMilestones: number }) {
+export default function LeaderboardClient({ 
+    initialRankings, 
+    totalMilestones, 
+    isVotingOpen, 
+    initialEventDeadline 
+}: { 
+    initialRankings: Ranking[], 
+    totalMilestones: number,
+    isVotingOpen: boolean,
+    initialEventDeadline: string | null
+}) {
     return (
         <div className="min-h-screen bg-background text-foreground p-4 md:p-8">
             <div className="max-w-3xl mx-auto space-y-8">
