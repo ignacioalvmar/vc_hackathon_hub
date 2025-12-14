@@ -62,3 +62,31 @@ export async function GET(req: Request) {
     }
 }
 
+export async function DELETE(req: Request) {
+    const session = await getServerSession(authOptions)
+
+    // @ts-ignore
+    if (!session || session.user?.role !== "ADMIN") {
+        return new NextResponse("Forbidden", { status: 403 })
+    }
+
+    try {
+        const { searchParams } = new URL(req.url)
+        const enrollmentId = searchParams.get("id")
+
+        if (!enrollmentId) {
+            return new NextResponse("Enrollment ID is required", { status: 400 })
+        }
+
+        // Delete the enrollment (cascade will handle activities and votes)
+        await prisma.enrollment.delete({
+            where: { id: enrollmentId }
+        })
+
+        return NextResponse.json({ success: true })
+    } catch (error) {
+        console.error("[ENROLLMENTS_DELETE]", error)
+        return new NextResponse("Internal Error", { status: 500 })
+    }
+}
+

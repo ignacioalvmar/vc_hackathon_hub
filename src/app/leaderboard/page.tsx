@@ -8,6 +8,10 @@ export const revalidate = 30; // Revalidate page every 30 seconds
 export default async function LeaderboardPage() {
     const session = await getServerSession(authOptions);
 
+    // Check if voting is open
+    const votingOpenConfig = await prisma.repoConfig.findUnique({ where: { key: "VOTING_OPEN" } });
+    const isVotingOpen = votingOpenConfig?.value === "true";
+
     const enrollments = await prisma.enrollment.findMany({
         include: {
             user: true,
@@ -18,6 +22,18 @@ export default async function LeaderboardPage() {
     });
 
     const milestones = await prisma.milestone.findMany({ orderBy: { order: "asc" } });
+
+    // Get vote counts for each enrollment if voting is open
+    let voteCountMap = new Map<string, number>();
+    if (isVotingOpen) {
+        const voteCounts = await prisma.vote.groupBy({
+            by: ['candidateId'],
+            _count: {
+                candidateId: true
+            }
+        });
+        voteCountMap = new Map(voteCounts.map(v => [v.candidateId, v._count.candidateId]));
+    }
 
     // Calculate scores
     const rankings = enrollments.map(e => {
@@ -43,6 +59,7 @@ export default async function LeaderboardPage() {
             score: score,
             completedCount: completed.size,
             lastActivityTime: lastActivityTime,
+            voteCount: isVotingOpen ? (voteCountMap.get(e.id) || 0) : 0,
             activities: e.activities.map(a => ({
                 ...a,
                 timestamp: a.timestamp.toISOString()
@@ -58,5 +75,5 @@ export default async function LeaderboardPage() {
         return a.lastActivityTime - b.lastActivityTime; // Lower (earlier) time wins tie
     });
 
-    return <LeaderboardClient initialRankings={rankings} totalMilestones={milestones.length} />;
+    return <LeaderboardClient initialRankings={rankings} totalMilestones={milestones.length} isVotingOpen={isVotingOpen} />;
 }

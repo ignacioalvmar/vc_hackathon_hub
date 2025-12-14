@@ -141,6 +141,11 @@ export default function AdminClient({ initialEnrollments, initialMilestones }: {
     const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(new Set());
     const [savingCandidates, setSavingCandidates] = useState(false);
     const [togglingVote, setTogglingVote] = useState(false);
+    
+    // Delete enrollment state
+    const [deletingEnrollment, setDeletingEnrollment] = useState<string | null>(null);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [enrollmentToDelete, setEnrollmentToDelete] = useState<{ id: string; name: string } | null>(null);
 
     // Panel Management State
     const PANEL_IDS = {
@@ -307,6 +312,29 @@ export default function AdminClient({ initialEnrollments, initialMilestones }: {
             console.error("Failed to toggle voting:", err);
         } finally {
             setTogglingVote(false);
+        }
+    };
+
+    // Delete enrollment
+    const handleDeleteEnrollment = async () => {
+        if (!enrollmentToDelete) return;
+        
+        setDeletingEnrollment(enrollmentToDelete.id);
+        try {
+            const res = await fetch(`/api/admin/enrollments?id=${enrollmentToDelete.id}`, {
+                method: "DELETE"
+            });
+            if (res.ok) {
+                await fetchEnrollments();
+                setDeleteDialogOpen(false);
+                setEnrollmentToDelete(null);
+            } else {
+                console.error("Failed to delete enrollment");
+            }
+        } catch (err) {
+            console.error("Failed to delete enrollment:", err);
+        } finally {
+            setDeletingEnrollment(null);
         }
     };
 
@@ -879,6 +907,7 @@ export default function AdminClient({ initialEnrollments, initialMilestones }: {
                                     <TableHead>Progress</TableHead>
                                     {votingStatus?.isOpen && <TableHead className="text-center">Votes</TableHead>}
                                     <TableHead className="text-right">Last Active</TableHead>
+                                    <TableHead className="text-right w-20">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -958,6 +987,19 @@ export default function AdminClient({ initialEnrollments, initialMilestones }: {
                                                 )}
                                             >
                                                 {lastActivity ? new Date(lastActivity.timestamp).toLocaleTimeString() : "Never"}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-destructive hover:text-destructive"
+                                                    onClick={() => {
+                                                        setEnrollmentToDelete({ id: e.id, name: e.user.name || "Unknown" });
+                                                        setDeleteDialogOpen(true);
+                                                    }}
+                                                >
+                                                    <Trash className="h-4 w-4" />
+                                                </Button>
                                             </TableCell>
                                         </TableRow>
                                     );
@@ -1162,6 +1204,37 @@ export default function AdminClient({ initialEnrollments, initialMilestones }: {
                                 disabled={editLoading}
                             >
                                 {editLoading ? "Updating..." : "Update Milestone"}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Delete Enrollment Dialog */}
+                <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Delete Student</DialogTitle>
+                            <DialogDescription>
+                                Are you sure you want to remove <strong>{enrollmentToDelete?.name}</strong> from the live progress? This will delete their enrollment, activities, and votes. This action cannot be undone.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    setDeleteDialogOpen(false);
+                                    setEnrollmentToDelete(null);
+                                }}
+                                disabled={deletingEnrollment !== null}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                onClick={handleDeleteEnrollment}
+                                disabled={deletingEnrollment !== null}
+                            >
+                                {deletingEnrollment ? "Deleting..." : "Delete"}
                             </Button>
                         </DialogFooter>
                     </DialogContent>

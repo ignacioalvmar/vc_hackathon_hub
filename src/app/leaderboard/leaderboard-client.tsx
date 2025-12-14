@@ -15,9 +15,10 @@ interface Ranking {
     score: number;
     completedCount: number;
     lastActivityTime: number;
+    voteCount?: number;
 }
 
-export default function LeaderboardClient({ initialRankings, totalMilestones }: { initialRankings: Ranking[], totalMilestones: number }) {
+export default function LeaderboardClient({ initialRankings, totalMilestones, isVotingOpen }: { initialRankings: Ranking[], totalMilestones: number, isVotingOpen: boolean }) {
     return (
         <div className="min-h-screen bg-background text-foreground p-4 md:p-8">
             <div className="max-w-3xl mx-auto space-y-8">
@@ -73,11 +74,21 @@ export default function LeaderboardClient({ initialRankings, totalMilestones }: 
                                     </div>
                                 </div>
 
-                                <div className="text-right">
-                                    <div className="text-2xl font-black text-foreground leading-none">
-                                        {rank.score}
+                                <div className="flex items-end gap-6">
+                                    <div className="text-right">
+                                        <div className="text-2xl font-black text-foreground leading-none">
+                                            {rank.score}
+                                        </div>
+                                        <div className="text-xs uppercase text-muted-foreground font-bold tracking-wider">Points</div>
                                     </div>
-                                    <div className="text-xs uppercase text-muted-foreground font-bold tracking-wider">Points</div>
+                                    {isVotingOpen && (
+                                        <div className="text-right">
+                                            <div className="text-2xl font-black text-foreground leading-none">
+                                                {rank.voteCount || 0}
+                                            </div>
+                                            <div className="text-xs uppercase text-muted-foreground font-bold tracking-wider">Votes</div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         );
