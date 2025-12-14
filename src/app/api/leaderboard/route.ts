@@ -92,10 +92,6 @@ export async function GET(req: Request) {
             return a.lastActivityTime - b.lastActivityTime; // Lower (earlier) time wins tie
         });
 
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/leaderboard/route.ts:89',message:'API returning leaderboard data',data:{rankingsCount:rankings.length,isVotingOpen,eventDeadline,hasVoteCounts:rankings.some(r=>r.voteCount>0)},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'E'})}).catch(()=>{});
-        // #endregion
-
         const response = NextResponse.json({
             rankings,
             isVotingOpen,

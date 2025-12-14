@@ -50,9 +50,6 @@ export default function LeaderboardClient({
                     setRankings(data.rankings || []);
                     setEventDeadline(data.eventDeadline || null);
                     setVotingOpen(data.isVotingOpen || false);
-                    // #region agent log
-                    fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/app/leaderboard/leaderboard-client.tsx:100',message:'Client polling leaderboard data',data:{rankingsCount:data.rankings.length,isVotingOpen:data.isVotingOpen,eventDeadline:data.eventDeadline,hasVoteCounts:data.rankings.some((r: Ranking)=>r.voteCount>0)},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'E'})}).catch(()=>{});
-                    // #endregion
                 }
             } catch (err) {
                 console.error("Failed to fetch leaderboard:", err);
