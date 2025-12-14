@@ -11,10 +11,16 @@ export default async function LeaderboardPage() {
     // Check if voting is open
     const votingOpenConfig = await prisma.repoConfig.findUnique({ where: { key: "VOTING_OPEN" } });
     const isVotingOpen = votingOpenConfig?.value === "true";
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leaderboard/page.tsx:13',message:'Voting status fetched from DB',data:{votingOpenConfigValue:votingOpenConfig?.value,isVotingOpen},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
 
     // Fetch event deadline
     const deadlineConfig = await prisma.repoConfig.findUnique({ where: { key: "EVENT_DEADLINE" } });
     const eventDeadline = deadlineConfig?.value || null;
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leaderboard/page.tsx:17',message:'Deadline fetched from DB',data:{deadlineConfigValue:deadlineConfig?.value,eventDeadline},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
 
     // When voting is open, only show candidates; otherwise show all enrollments
     const enrollments = await prisma.enrollment.findMany({
@@ -61,15 +67,14 @@ export default async function LeaderboardPage() {
 
         return {
             id: e.id,
-            user: e.user,
+            user: {
+                name: e.user.name,
+                image: e.user.image
+            },
             score: score,
             completedCount: completed.size,
             lastActivityTime: lastActivityTime,
-            voteCount: isVotingOpen ? (voteCountMap.get(e.id) || 0) : 0,
-            activities: e.activities.map(a => ({
-                ...a,
-                timestamp: a.timestamp.toISOString()
-            }))
+            voteCount: isVotingOpen ? (voteCountMap.get(e.id) || 0) : 0
         };
     });
 
@@ -93,5 +98,8 @@ export default async function LeaderboardPage() {
         return a.lastActivityTime - b.lastActivityTime; // Lower (earlier) time wins tie
     });
 
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leaderboard/page.tsx:96',message:'Passing props to LeaderboardClient',data:{rankingsCount:rankings.length,isVotingOpen,initialEventDeadline,hasVoteCounts:rankings.some(r=>(r as any).voteCount>0)},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
     return <LeaderboardClient initialRankings={rankings} totalMilestones={milestones.length} isVotingOpen={isVotingOpen} initialEventDeadline={eventDeadline} />;
 }

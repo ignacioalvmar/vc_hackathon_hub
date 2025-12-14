@@ -53,11 +53,15 @@ export async function POST(req: Request) {
     const { action } = await req.json() // "OPEN" | "CLOSE" | "REVEAL" | "HIDE"
 
     if (action === "OPEN" || action === "CLOSE") {
+        const votingValue = action === "OPEN" ? "true" : "false";
         await prisma.repoConfig.upsert({
             where: { key: "VOTING_OPEN" },
-            update: { value: action === "OPEN" ? "true" : "false" },
-            create: { key: "VOTING_OPEN", value: action === "OPEN" ? "true" : "false" }
+            update: { value: votingValue },
+            create: { key: "VOTING_OPEN", value: votingValue }
         })
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'vote-control/route.ts:60',message:'Voting status saved to DB',data:{action,votingValue},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
     }
 
     // Simplification: We strictly use RepoConfig for these states

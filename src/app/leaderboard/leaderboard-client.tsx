@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Trophy, Medal, Award, Flame } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { useEffect, useState } from "react";
 
 interface Ranking {
     id: string;
@@ -28,6 +29,41 @@ export default function LeaderboardClient({
     isVotingOpen: boolean,
     initialEventDeadline: string | null
 }) {
+    const [rankings, setRankings] = useState<Ranking[]>(initialRankings);
+    const [eventDeadline, setEventDeadline] = useState<string | null>(initialEventDeadline);
+    const [votingOpen, setVotingOpen] = useState<boolean>(isVotingOpen);
+
+    // Poll for leaderboard updates
+    useEffect(() => {
+        const fetchLeaderboard = async () => {
+            try {
+                // Add cache-busting query parameter and prevent caching
+                const res = await fetch(`/api/leaderboard?t=${Date.now()}`, {
+                    cache: 'no-store',
+                    headers: {
+                        'Cache-Control': 'no-cache',
+                    }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setRankings(data.rankings || []);
+                    setEventDeadline(data.eventDeadline || null);
+                    setVotingOpen(data.isVotingOpen || false);
+                    // #region agent log
+                    fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'src/app/leaderboard/leaderboard-client.tsx:100',message:'Client polling leaderboard data',data:{rankingsCount:data.rankings.length,isVotingOpen:data.isVotingOpen,eventDeadline:data.eventDeadline,hasVoteCounts:data.rankings.some(r=>r.voteCount>0)},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'E'})}).catch(()=>{});
+                    // #endregion
+                }
+            } catch (err) {
+                console.error("Failed to fetch leaderboard:", err);
+            }
+        };
+        
+        fetchLeaderboard();
+        // Poll every 5 seconds
+        const interval = setInterval(fetchLeaderboard, 5000);
+        return () => clearInterval(interval);
+    }, []);
+
     return (
         <div className="min-h-screen bg-background text-foreground p-4 md:p-8">
             <div className="max-w-3xl mx-auto space-y-8">
@@ -43,7 +79,7 @@ export default function LeaderboardClient({
                 </div>
 
                 <div className="space-y-4">
-                    {initialRankings.map((rank, index) => {
+                    {rankings.map((rank, index) => {
                         const isFirst = index === 0;
                         const isSecond = index === 1;
                         const isThird = index === 2;
@@ -93,7 +129,7 @@ export default function LeaderboardClient({
                         );
                     })}
 
-                    {initialRankings.length === 0 && (
+                    {rankings.length === 0 && (
                         <div className="text-center py-20 text-muted-foreground">
                             <Flame className="w-12 h-12 mx-auto mb-4 opacity-20" />
                             <p>No warriors have entered the arena yet.</p>
