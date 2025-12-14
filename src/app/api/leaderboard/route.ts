@@ -82,10 +82,17 @@ export async function GET(req: Request) {
             return a.lastActivityTime - b.lastActivityTime; // Lower (earlier) time wins tie
         });
 
+        // Fetch event deadline
+        const deadlineConfig = await prisma.repoConfig.findUnique({ 
+            where: { key: "EVENT_DEADLINE" } 
+        });
+        const eventDeadline = deadlineConfig?.value || null;
+
         return NextResponse.json({
             rankings,
             isVotingOpen,
-            totalMilestones: milestones.length
+            totalMilestones: milestones.length,
+            eventDeadline
         });
     } catch (error) {
         console.error("Failed to fetch leaderboard:", error);
@@ -95,3 +102,4 @@ export async function GET(req: Request) {
         );
     }
 }
+

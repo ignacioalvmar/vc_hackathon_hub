@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Trophy, Medal, Award, Flame, CheckCircle } from "lucide-react";
+import { Trophy, Medal, Award, Flame, CheckCircle, Clock } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 interface Ranking {
@@ -19,9 +19,11 @@ interface Ranking {
     voteCount?: number;
 }
 
-export default function LeaderboardClient({ initialRankings, totalMilestones, isVotingOpen }: { initialRankings: Ranking[], totalMilestones: number, isVotingOpen: boolean }) {
+export default function LeaderboardClient({ initialRankings, totalMilestones, isVotingOpen, initialEventDeadline }: { initialRankings: Ranking[], totalMilestones: number, isVotingOpen: boolean, initialEventDeadline: string | null }) {
     const [rankings, setRankings] = useState<Ranking[]>(initialRankings);
     const [votingStatus, setVotingStatus] = useState(isVotingOpen);
+    const [eventDeadline, setEventDeadline] = useState<string | null>(initialEventDeadline);
+    const [timeRemaining, setTimeRemaining] = useState<{ hours: number; minutes: number; seconds: number; expired: boolean } | null>(null);
 
     // Poll for updates when voting is open
     useEffect(() => {
@@ -55,10 +57,63 @@ export default function LeaderboardClient({ initialRankings, totalMilestones, is
                 .then(res => res.json())
                 .then(data => {
                     setRankings(data.rankings);
+                    setEventDeadline(data.eventDeadline || null);
                 })
                 .catch(err => console.error("Failed to fetch leaderboard:", err));
         }
     }, [isVotingOpen]);
+
+    // Update event deadline when polling
+    useEffect(() => {
+        if (votingStatus) {
+            const fetchLeaderboard = async () => {
+                try {
+                    const res = await fetch("/api/leaderboard");
+                    if (res.ok) {
+                        const data = await res.json();
+                        setEventDeadline(data.eventDeadline || null);
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch leaderboard:", err);
+                }
+            };
+            fetchLeaderboard();
+        }
+    }, [votingStatus]);
+
+    // Calculate and update countdown timer
+    useEffect(() => {
+        if (!eventDeadline) {
+            setTimeRemaining(null);
+            return;
+        }
+
+        const calculateTimeRemaining = () => {
+            const now = new Date();
+            const deadline = new Date(eventDeadline);
+            const diff = deadline.getTime() - now.getTime();
+
+            if (diff <= 0) {
+                // Timer expired
+                setTimeRemaining({ hours: 0, minutes: 0, seconds: 0, expired: true });
+                return;
+            }
+
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+            setTimeRemaining({ hours, minutes, seconds, expired: false });
+        };
+
+        // Calculate immediately
+        calculateTimeRemaining();
+
+        // Update every second
+        const interval = setInterval(calculateTimeRemaining, 1000);
+
+        return () => clearInterval(interval);
+    }, [eventDeadline]);
 
     return (
         <div className="min-h-screen bg-background text-foreground p-4 md:p-8">
@@ -75,6 +130,38 @@ export default function LeaderboardClient({ initialRankings, totalMilestones, is
                         {votingStatus ? "Vote Rankings" : "Hackathon Session Rankings"}
                     </p>
                 </div>
+
+                {/* Countdown Timer */}
+                {timeRemaining !== null && (
+                    <Card className="border-orange-500/50 bg-gradient-to-r from-orange-500/10 dark:from-orange-900/20 to-background">
+                        <CardContent className="pt-6">
+                            <div className="flex flex-col items-center justify-center space-y-2">
+                                <div className="flex items-center gap-2 text-muted-foreground">
+                                    <Clock className="w-5 h-5" />
+                                    <span className="text-sm uppercase tracking-wider font-semibold">
+                                        {timeRemaining.expired ? "Time's Up!" : "Time Remaining"}
+                                    </span>
+                                </div>
+                                <div className="text-4xl md:text-5xl font-mono font-black tabular-nums">
+                                    {timeRemaining.expired ? (
+                                        <span className="text-muted-foreground">00:00:00</span>
+                                    ) : (
+                                        <span className="bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-red-600">
+                                            {String(timeRemaining.hours).padStart(2, '0')}:
+                                            {String(timeRemaining.minutes).padStart(2, '0')}:
+                                            {String(timeRemaining.seconds).padStart(2, '0')}
+                                        </span>
+                                    )}
+                                </div>
+                                {!timeRemaining.expired && eventDeadline && (
+                                    <p className="text-xs text-muted-foreground">
+                                        Deadline: {new Date(eventDeadline).toLocaleString()}
+                                    </p>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
 
                 <div className="space-y-4">
                     {rankings.map((rank, index) => {

@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Trash, User, Github, LogOut, RefreshCw, AlertCircle, CheckCircle, Pencil, Vote, Lock, Unlock, GripVertical, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Trash, User, Github, LogOut, RefreshCw, AlertCircle, CheckCircle, Pencil, Vote, Lock, Unlock, GripVertical, ChevronDown, ChevronUp, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { signOut } from "next-auth/react";
@@ -141,6 +141,12 @@ export default function AdminClient({ initialEnrollments, initialMilestones }: {
     const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(new Set());
     const [savingCandidates, setSavingCandidates] = useState(false);
     const [togglingVote, setTogglingVote] = useState(false);
+
+    // Event Timer State
+    const [eventDeadline, setEventDeadline] = useState<string | null>(null);
+    const [deadlineInput, setDeadlineInput] = useState("");
+    const [savingDeadline, setSavingDeadline] = useState(false);
+    const [deadlineError, setDeadlineError] = useState<string | null>(null);
     
     // Delete enrollment state
     const [deletingEnrollment, setDeletingEnrollment] = useState<string | null>(null);
@@ -151,6 +157,7 @@ export default function AdminClient({ initialEnrollments, initialMilestones }: {
     const PANEL_IDS = {
         COMMIT_TRACKING: 'commit-tracking',
         VOTING_MANAGEMENT: 'voting-management',
+        EVENT_TIMER: 'event-timer',
         CREATE_MILESTONE: 'create-milestone',
         LIVE_PROGRESS: 'live-progress',
     } as const;
@@ -158,6 +165,7 @@ export default function AdminClient({ initialEnrollments, initialMilestones }: {
     const DEFAULT_PANEL_ORDER = [
         PANEL_IDS.COMMIT_TRACKING,
         PANEL_IDS.VOTING_MANAGEMENT,
+        PANEL_IDS.EVENT_TIMER,
         PANEL_IDS.CREATE_MILESTONE,
         PANEL_IDS.LIVE_PROGRESS,
     ];
@@ -254,6 +262,96 @@ export default function AdminClient({ initialEnrollments, initialMilestones }: {
         }
     };
 
+    // Fetch event deadline
+    const fetchEventDeadline = async () => {
+        try {
+            const res = await fetch("/api/admin/event-timer");
+            if (res.ok) {
+                const data = await res.json();
+                setEventDeadline(data.deadline);
+                // Convert ISO string to datetime-local format for input
+                if (data.deadline) {
+                    const date = new Date(data.deadline);
+                    // Format as YYYY-MM-DDTHH:mm for datetime-local input
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    const hours = String(date.getHours()).padStart(2, '0');
+                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                    setDeadlineInput(`${year}-${month}-${day}T${hours}:${minutes}`);
+                } else {
+                    setDeadlineInput("");
+                }
+            } else {
+                console.error("Failed to fetch event deadline");
+            }
+        } catch (err) {
+            console.error("Failed to fetch event deadline:", err);
+        }
+    };
+
+    // Save event deadline
+    const saveEventDeadline = async () => {
+        setSavingDeadline(true);
+        setDeadlineError(null);
+        try {
+            let deadlineToSave: string | null = null;
+            
+            if (deadlineInput.trim()) {
+                // Convert datetime-local to ISO string
+                const localDate = new Date(deadlineInput);
+                if (isNaN(localDate.getTime())) {
+                    setDeadlineError("Invalid date format");
+                    setSavingDeadline(false);
+                    return;
+                }
+                deadlineToSave = localDate.toISOString();
+            }
+
+            const res = await fetch("/api/admin/event-timer", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ deadline: deadlineToSave })
+            });
+
+            if (res.ok) {
+                await fetchEventDeadline();
+            } else {
+                const errorText = await res.text();
+                setDeadlineError(`Failed to save deadline: ${errorText || res.statusText}`);
+            }
+        } catch (err) {
+            setDeadlineError(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        } finally {
+            setSavingDeadline(false);
+        }
+    };
+
+    // Clear event deadline
+    const clearEventDeadline = async () => {
+        setSavingDeadline(true);
+        setDeadlineError(null);
+        try {
+            const res = await fetch("/api/admin/event-timer", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ deadline: null })
+            });
+
+            if (res.ok) {
+                setEventDeadline(null);
+                setDeadlineInput("");
+            } else {
+                const errorText = await res.text();
+                setDeadlineError(`Failed to clear deadline: ${errorText || res.statusText}`);
+            }
+        } catch (err) {
+            setDeadlineError(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        } finally {
+            setSavingDeadline(false);
+        }
+    };
+
     // Initialize selected candidates from enrollments
     useEffect(() => {
         const selected = new Set(
@@ -265,6 +363,7 @@ export default function AdminClient({ initialEnrollments, initialMilestones }: {
     // Fetch voting status on mount and when enrollments change
     useEffect(() => {
         fetchVotingStatus();
+        fetchEventDeadline();
     }, []);
 
     // Save candidate selection
@@ -775,6 +874,96 @@ export default function AdminClient({ initialEnrollments, initialMilestones }: {
         </SortablePanel>
     );
 
+    const renderEventTimer = () => (
+        <SortablePanel
+            id={PANEL_IDS.EVENT_TIMER}
+            isMinimized={minimizedPanels.has(PANEL_IDS.EVENT_TIMER)}
+            onToggleMinimize={() => toggleMinimize(PANEL_IDS.EVENT_TIMER)}
+        >
+            <Card className="border-orange-500/20 bg-orange-500/5">
+                <CardHeader className="cursor-pointer" onClick={() => toggleMinimize(PANEL_IDS.EVENT_TIMER)}>
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 flex-1">
+                            <Clock className="w-5 h-5 text-orange-500" />
+                            <CardTitle>Event Timer Configuration</CardTitle>
+                        </div>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                toggleMinimize(PANEL_IDS.EVENT_TIMER);
+                            }}
+                        >
+                            {minimizedPanels.has(PANEL_IDS.EVENT_TIMER) ? (
+                                <ChevronDown className="h-4 w-4" />
+                            ) : (
+                                <ChevronUp className="h-4 w-4" />
+                            )}
+                        </Button>
+                    </div>
+                    <CardDescription>
+                        Set the deadline for milestone submissions. The countdown will appear on the leaderboard.
+                    </CardDescription>
+                </CardHeader>
+                {!minimizedPanels.has(PANEL_IDS.EVENT_TIMER) && (
+                    <CardContent className="space-y-4">
+                        {deadlineError && (
+                            <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+                                {deadlineError}
+                            </div>
+                        )}
+                        <div className="space-y-2">
+                            <div>
+                                <label className="text-sm font-medium mb-1 block">Deadline Date & Time</label>
+                                <Input
+                                    type="datetime-local"
+                                    value={deadlineInput}
+                                    onChange={(e) => {
+                                        setDeadlineInput(e.target.value);
+                                        setDeadlineError(null);
+                                    }}
+                                    disabled={savingDeadline}
+                                    className="font-mono"
+                                />
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Set the target time for milestone submissions
+                                </p>
+                            </div>
+                            {eventDeadline && (
+                                <div className="p-3 rounded-lg bg-muted border">
+                                    <div className="text-sm font-medium mb-1">Current Deadline</div>
+                                    <div className="text-sm text-muted-foreground">
+                                        {new Date(eventDeadline).toLocaleString()}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex gap-2">
+                            <Button
+                                className="flex-1"
+                                onClick={saveEventDeadline}
+                                disabled={savingDeadline}
+                            >
+                                {savingDeadline ? "Saving..." : eventDeadline ? "Update Deadline" : "Set Deadline"}
+                            </Button>
+                            {eventDeadline && (
+                                <Button
+                                    variant="outline"
+                                    onClick={clearEventDeadline}
+                                    disabled={savingDeadline}
+                                >
+                                    Clear
+                                </Button>
+                            )}
+                        </div>
+                    </CardContent>
+                )}
+            </Card>
+        </SortablePanel>
+    );
+
     const renderCreateMilestone = () => (
         <SortablePanel
             id={PANEL_IDS.CREATE_MILESTONE}
@@ -1015,6 +1204,7 @@ export default function AdminClient({ initialEnrollments, initialMilestones }: {
     const panelRenderers: Record<string, () => React.ReactNode> = {
         [PANEL_IDS.COMMIT_TRACKING]: renderCommitTracking,
         [PANEL_IDS.VOTING_MANAGEMENT]: renderVotingManagement,
+        [PANEL_IDS.EVENT_TIMER]: renderEventTimer,
         [PANEL_IDS.CREATE_MILESTONE]: renderCreateMilestone,
         [PANEL_IDS.LIVE_PROGRESS]: renderLiveProgress,
     };

@@ -12,6 +12,10 @@ export default async function LeaderboardPage() {
     const votingOpenConfig = await prisma.repoConfig.findUnique({ where: { key: "VOTING_OPEN" } });
     const isVotingOpen = votingOpenConfig?.value === "true";
 
+    // Fetch event deadline
+    const deadlineConfig = await prisma.repoConfig.findUnique({ where: { key: "EVENT_DEADLINE" } });
+    const eventDeadline = deadlineConfig?.value || null;
+
     // When voting is open, only show candidates; otherwise show all enrollments
     const enrollments = await prisma.enrollment.findMany({
         where: isVotingOpen ? { isVotingCandidate: true } : undefined,
@@ -89,5 +93,5 @@ export default async function LeaderboardPage() {
         return a.lastActivityTime - b.lastActivityTime; // Lower (earlier) time wins tie
     });
 
-    return <LeaderboardClient initialRankings={rankings} totalMilestones={milestones.length} isVotingOpen={isVotingOpen} />;
+    return <LeaderboardClient initialRankings={rankings} totalMilestones={milestones.length} isVotingOpen={isVotingOpen} initialEventDeadline={eventDeadline} />;
 }
