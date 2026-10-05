@@ -35,13 +35,6 @@ export default function LeaderboardClient({
     const [votingOpen, setVotingOpen] = useState<boolean>(isVotingOpen);
     const [timeRemaining, setTimeRemaining] = useState<string>("");
 
-    // Log initial deadline on mount
-    useEffect(() => {
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leaderboard-client.tsx:37',message:'Component initialized with deadline',data:{initialEventDeadline},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
-    }, []);
-
     // Update countdown timer
     useEffect(() => {
         if (!eventDeadline) {
@@ -93,13 +86,7 @@ export default function LeaderboardClient({
                 });
                 if (res.ok) {
                     const data = await res.json();
-                    // #region agent log
-                    fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leaderboard-client.tsx:49',message:'API response received',data:{hasEventDeadline:!!data.eventDeadline,eventDeadline:data.eventDeadline},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'C'})}).catch(()=>{});
-                    // #endregion
                     setRankings(data.rankings || []);
-                    // #region agent log
-                    fetch('http://127.0.0.1:7243/ingest/8a563973-f3b4-4f9d-9c8f-85048a258aaf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leaderboard-client.tsx:53',message:'Setting eventDeadline state',data:{newDeadline:data.eventDeadline || null,currentDeadline:eventDeadline},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'C'})}).catch(()=>{});
-                    // #endregion
                     setEventDeadline(data.eventDeadline || null);
                     setVotingOpen(data.isVotingOpen || false);
                 }
