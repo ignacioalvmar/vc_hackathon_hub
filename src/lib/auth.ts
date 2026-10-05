@@ -30,6 +30,11 @@ export const authOptions: NextAuthOptions = {
         GithubProvider({
             clientId: process.env.GITHUB_ID || "",
             clientSecret: process.env.GITHUB_SECRET || "",
+            // GitHub returns an `iss` parameter in the OAuth callback (RFC 9207).
+            // openid-client validates it unconditionally, so the issuer has to be
+            // declared here or the callback fails with
+            // "issuer must be configured on the issuer".
+            issuer: "https://github.com/login/oauth",
         }),
     ],
     callbacks: {
