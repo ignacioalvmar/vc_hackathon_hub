@@ -136,6 +136,11 @@ export default function AdminClient({ initialEnrollments, initialMilestones }: {
     const [editLoading, setEditLoading] = useState(false);
     const [editError, setEditError] = useState<string | null>(null);
 
+    // Delete Milestone State
+    const [milestoneToDelete, setMilestoneToDelete] = useState<Milestone | null>(null);
+    const [deletingMilestone, setDeletingMilestone] = useState(false);
+    const [deleteMilestoneError, setDeleteMilestoneError] = useState<string | null>(null);
+
     // Voting Management State
     const [votingStatus, setVotingStatus] = useState<{ isOpen: boolean; candidateCount: number } | null>(null);
     const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(new Set());
@@ -640,6 +645,37 @@ export default function AdminClient({ initialEnrollments, initialMilestones }: {
             setEditError(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
         } finally {
             setEditLoading(false);
+        }
+    };
+
+    const handleDeleteMilestone = async () => {
+        if (!milestoneToDelete) return;
+
+        setDeletingMilestone(true);
+        setDeleteMilestoneError(null);
+
+        try {
+            const res = await fetch(`/api/admin/milestones?id=${milestoneToDelete.id}`, {
+                method: "DELETE"
+            });
+
+            if (res.ok) {
+                setMilestones(milestones.filter(m => m.id !== milestoneToDelete.id));
+                setMilestoneToDelete(null);
+                // Activities for this milestone were cascaded away, so refresh progress
+                await fetchEnrollments();
+            } else {
+                const errorText = await res.text();
+                if (res.status === 403) {
+                    setDeleteMilestoneError("Access denied. You need ADMIN role to delete milestones.");
+                } else {
+                    setDeleteMilestoneError(`Failed to delete milestone: ${errorText || res.statusText}`);
+                }
+            }
+        } catch (err) {
+            setDeleteMilestoneError(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        } finally {
+            setDeletingMilestone(false);
         }
     };
 
@@ -1287,6 +1323,18 @@ export default function AdminClient({ initialEnrollments, initialMilestones }: {
                                 >
                                     <Pencil className="h-4 w-4" />
                                 </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    onClick={() => {
+                                        setMilestoneToDelete(m);
+                                        setDeleteMilestoneError(null);
+                                    }}
+                                    title="Delete milestone"
+                                >
+                                    <Trash className="h-4 w-4" />
+                                </Button>
                             </div>
                         </div>
                     ))}
@@ -1394,6 +1442,47 @@ export default function AdminClient({ initialEnrollments, initialMilestones }: {
                                 disabled={editLoading}
                             >
                                 {editLoading ? "Updating..." : "Update Milestone"}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Delete Milestone Dialog */}
+                <Dialog open={milestoneToDelete !== null} onOpenChange={(open) => {
+                    if (!open && !deletingMilestone) {
+                        setMilestoneToDelete(null);
+                        setDeleteMilestoneError(null);
+                    }
+                }}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Delete Milestone</DialogTitle>
+                            <DialogDescription>
+                                Are you sure you want to delete <strong>{milestoneToDelete?.title}</strong> ({milestoneToDelete?.labelPattern})? All student completions recorded for this milestone will also be removed. This action cannot be undone.
+                            </DialogDescription>
+                        </DialogHeader>
+                        {deleteMilestoneError && (
+                            <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+                                {deleteMilestoneError}
+                            </div>
+                        )}
+                        <DialogFooter>
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    setMilestoneToDelete(null);
+                                    setDeleteMilestoneError(null);
+                                }}
+                                disabled={deletingMilestone}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                onClick={handleDeleteMilestone}
+                                disabled={deletingMilestone}
+                            >
+                                {deletingMilestone ? "Deleting..." : "Delete"}
                             </Button>
                         </DialogFooter>
                     </DialogContent>
