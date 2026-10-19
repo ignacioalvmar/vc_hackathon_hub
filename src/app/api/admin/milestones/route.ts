@@ -109,6 +109,50 @@ export async function PUT(req: Request) {
     }
 }
 
+export async function DELETE(req: Request) {
+    const session = await getServerSession(authOptions)
+
+    if (!session || !session.user?.id) {
+        return new NextResponse("Forbidden", { status: 403 })
+    }
+
+    // Check role from session first, then fallback to database check
+    // @ts-ignore
+    let userRole = session.user?.role
+
+    // If role is not ADMIN in session, check database directly
+    if (userRole !== "ADMIN") {
+        const dbUser = await prisma.user.findUnique({
+            where: { id: session.user.id },
+            select: { role: true }
+        })
+        userRole = dbUser?.role || userRole
+    }
+
+    if (userRole !== "ADMIN") {
+        return new NextResponse("Forbidden", { status: 403 })
+    }
+
+    try {
+        const { searchParams } = new URL(req.url)
+        const id = searchParams.get("id")
+
+        if (!id) {
+            return new NextResponse("Milestone ID is required", { status: 400 })
+        }
+
+        // Activities referencing this milestone are removed via onDelete: Cascade
+        await prisma.milestone.delete({
+            where: { id },
+        })
+
+        return NextResponse.json({ success: true })
+    } catch (error) {
+        console.error("[MILESTONES_DELETE]", error)
+        return new NextResponse("Internal Error", { status: 500 })
+    }
+}
+
 export async function GET(req: Request) {
     try {
         const milestones = await prisma.milestone.findMany({
